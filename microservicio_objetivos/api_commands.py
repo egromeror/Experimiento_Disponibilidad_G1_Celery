@@ -1,4 +1,11 @@
 from microservicio_objetivos.app import db, Entrenamiento, EntrenamientoSchema, Resource, request, datetime
+from celery import Celery
+
+celery_app = Celery(__name__, broker='redis://localhost:6379/0')
+
+@celery_app.task(name='send_entrenamiento')
+def send_entrenamiento(*args):
+    pass
 
 entrenamiento_schema = EntrenamientoSchema()
 
@@ -13,4 +20,6 @@ class EntrenamientoResourceC(Resource):
         )
         db.session.add(new_entrenamiento)
         db.session.commit()
+        args = (new_entrenamiento.id, new_entrenamiento.fecha, new_entrenamiento.distancia, new_entrenamiento.tiempo, new_entrenamiento.calorias, new_entrenamiento.usuario_id)
+        send_entrenamiento.apply_async(args=args, queue='logs')
         return entrenamiento_schema.dump(new_entrenamiento)
